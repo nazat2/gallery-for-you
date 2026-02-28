@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>your photos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- CINEMATIC ROMANTIC INTRO -->
+    <div class="romantic-intro" id="romanticIntro">
+        <!-- Film Grain -->
+        <div class="film-grain"></div>
+        
+        <!-- Black Bars -->
+        <div class="cinematic-bar top-bar"></div>
+        <div class="cinematic-bar bottom-bar"></div>
+        
+        <!-- Vignette -->
+        <div class="vignette"></div>
+        
+        <!-- Blur Light Movement -->
+        <div class="blur-light"></div>
+        
+        <!-- Sakura Petals Container -->
+        <div class="petals-container" id="petalsContainer"></div>
+        
+        <!-- Intro Content -->
+        <div class="intro-content">
+            <h1 class="intro-logo">
+                <span class="logo-line"></span>
+                <span class="logo-word">YOUR</span>
+                <span class="logo-word">PHOTOS</span>
+                <span class="logo-line"></span>
+            </h1>
+            <p class="intro-sub">for you</p>
+        </div>
+    </div>
+
+    <!-- MUSIC CONTROL -->
+    <div class="music-control" id="musicControl">
+        <button class="music-btn" id="musicBtn">
+            <i class="fas fa-heart"></i>
+        </button>
+        <div class="music-wave" id="musicWave">
+            <span></span><span></span><span></span><span></span>
+        </div>
+    </div>
+
+    <!-- MAIN GALLERY -->
+    <main class="gallery-main" id="galleryMain">
+        <!-- Film Grain -->
+        <div class="film-grain"></div>
+        
+        <!-- Vignette Overlay -->
+        <div class="vignette-overlay"></div>
+        
+        <!-- Moving Star Particles -->
+        <div class="star-particles" id="starParticles"></div>
+        
+        <!-- Floating Hearts Container -->
+        <div class="floating-hearts" id="floatingHearts"></div>
+        
+        <!-- Parallax Layer Belakang -->
+        <div class="parallax-layer"></div>
+        
+        <!-- Gallery Wrapper (Full Cover) -->
+        <div class="gallery-wrapper" id="galleryWrapper">
+            <!-- Grid Track -->
+            <div class="grid-track" id="gridTrack"></div>
+        </div>
+    </main>
+
+    <!-- MODAL PREVIEW -->
+    <div class="modal" id="imageModal">
+        <div class="modal-overlay" id="modalOverlay"></div>
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">
+                <i class="fas fa-times"></i>
+            </button>
+            <button class="modal-nav modal-prev" id="modalPrev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="modal-nav modal-next" id="modalNext">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div class="modal-image-container">
+                <img src="" alt="Preview" class="modal-image" id="modalImage">
+            </div>
+            <div class="modal-counter" id="modalCounter"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
