@@ -575,6 +575,7 @@ body {
     }
 }
 
+/* ===== MODAL FIX - RESPONSIVE IMAGE ===== */
 .modal {
     position: fixed;
     top: 0;
@@ -740,7 +741,6 @@ body {
     display: block;
     border-radius: 4px;
     box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
-    transition: opacity 0.15s ease;
 }
 
 .modal-counter {
