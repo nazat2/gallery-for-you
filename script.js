@@ -1,15 +1,14 @@
-// ===== CONFIGURATION =====
 const CONFIG = {
     images: ['foto1.png', 'foto2.png', 'foto3.png', 'foto4.png', 'foto5.png', 'foto6.png'],
     audioPath: 'music/lagu1.mp3',
-    introDuration: 5000, // 5 detik
-    scrollSpeed: 0.35, // lebih pelan untuk kesan mewah
+    introAudioPath: 'music/intro.mp3',
+    introDuration: 5000,
+    scrollSpeed: 0.35,
     heartInterval: 900,
-    gridCopies: 5, // lebih banyak copy untuk full cover
-    totalRows: 10 // lebih banyak baris untuk full cover
+    gridCopies: 5,
+    totalRows: 10
 };
 
-// ===== DOM ELEMENTS =====
 const elements = {
     romanticIntro: document.getElementById('romanticIntro'),
     galleryMain: document.getElementById('galleryMain'),
@@ -19,6 +18,7 @@ const elements = {
     petalsContainer: document.getElementById('petalsContainer'),
     starParticles: document.getElementById('starParticles'),
     musicBtn: document.getElementById('musicBtn'),
+    musicIcon: document.getElementById('musicIcon'),
     musicWave: document.getElementById('musicWave'),
     modal: document.getElementById('imageModal'),
     modalImage: document.getElementById('modalImage'),
@@ -26,13 +26,15 @@ const elements = {
     modalPrev: document.getElementById('modalPrev'),
     modalNext: document.getElementById('modalNext'),
     modalCounter: document.getElementById('modalCounter'),
-    modalOverlay: document.getElementById('modalOverlay')
+    modalOverlay: document.getElementById('modalOverlay'),
+    modalImageContainer: document.getElementById('modalImageContainer')
 };
 
-// ===== STATE =====
 let state = {
     audio: null,
+    introAudio: null,
     isPlaying: false,
+    introPlaying: false,
     isDragging: false,
     isPaused: false,
     startX: 0,
@@ -43,36 +45,36 @@ let state = {
     gridWidth: 0,
     gridItems: [],
     currentModalIndex: 0,
-    wheelTimeout: null
+    wheelTimeout: null,
+    audioLoaded: false,
+    introAudioLoaded: false
 };
 
-// ===== POLA GRID UNTUK 8 KOLOM =====
 const gridPatterns = [
-    [0, 1, 2, 3, 4, 5, 0, 1], // foto1 foto2 foto3 foto4 foto5 foto6 foto1 foto2
-    [2, 3, 4, 5, 0, 1, 2, 3], // foto3 foto4 foto5 foto6 foto1 foto2 foto3 foto4
-    [4, 5, 0, 1, 2, 3, 4, 5], // foto5 foto6 foto1 foto2 foto3 foto4 foto5 foto6
-    [1, 2, 3, 4, 5, 0, 1, 2], // foto2 foto3 foto4 foto5 foto6 foto1 foto2 foto3
-    [3, 4, 5, 0, 1, 2, 3, 4], // foto4 foto5 foto6 foto1 foto2 foto3 foto4 foto5
-    [5, 0, 1, 2, 3, 4, 5, 0], // foto6 foto1 foto2 foto3 foto4 foto5 foto6 foto1
-    [0, 1, 2, 3, 4, 5, 0, 1], // foto1 foto2 foto3 foto4 foto5 foto6 foto1 foto2
-    [2, 3, 4, 5, 0, 1, 2, 3], // foto3 foto4 foto5 foto6 foto1 foto2 foto3 foto4
-    [4, 5, 0, 1, 2, 3, 4, 5], // foto5 foto6 foto1 foto2 foto3 foto4 foto5 foto6
-    [1, 2, 3, 4, 5, 0, 1, 2]  // foto2 foto3 foto4 foto5 foto6 foto1 foto2 foto3
+    [0, 1, 2, 3, 4, 5, 0, 1],
+    [2, 3, 4, 5, 0, 1, 2, 3],
+    [4, 5, 0, 1, 2, 3, 4, 5],
+    [1, 2, 3, 4, 5, 0, 1, 2],
+    [3, 4, 5, 0, 1, 2, 3, 4],
+    [5, 0, 1, 2, 3, 4, 5, 0],
+    [0, 1, 2, 3, 4, 5, 0, 1],
+    [2, 3, 4, 5, 0, 1, 2, 3],
+    [4, 5, 0, 1, 2, 3, 4, 5],
+    [1, 2, 3, 4, 5, 0, 1, 2]
 ];
 
-// ===== ROMANTIC INTRO =====
 class RomanticIntro {
     constructor() {
         this.petalInterval = null;
     }
-    
+
     init() {
         this.setBlackBars();
         this.startPetals();
         this.createStars();
         this.startIntro();
     }
-    
+
     setBlackBars() {
         const bars = document.querySelectorAll('.cinematic-bar');
         const height = window.innerWidth <= 768 ? 40 : 80;
@@ -80,10 +82,9 @@ class RomanticIntro {
             bar.style.height = `${height}px`;
         });
     }
-    
+
     createStars() {
         if (!elements.starParticles) return;
-        
         for (let i = 0; i < 50; i++) {
             const star = document.createElement('div');
             star.className = 'star';
@@ -94,62 +95,62 @@ class RomanticIntro {
             elements.starParticles.appendChild(star);
         }
     }
-    
+
     startPetals() {
         this.petalInterval = setInterval(() => {
             this.createPetal();
         }, 250);
-        
         setTimeout(() => {
             clearInterval(this.petalInterval);
         }, 4500);
     }
-    
+
     createPetal() {
         if (!elements.petalsContainer) return;
-        
         const petal = document.createElement('div');
         petal.className = 'petal';
-        
         const petals = ['🌸', '🌸', '🌸', '🌸'];
         petal.innerHTML = petals[Math.floor(Math.random() * petals.length)];
-        
         const size = Math.random() * 12 + 10;
         const left = Math.random() * 100;
         const duration = Math.random() * 5 + 4;
         const delay = Math.random() * 2;
-        
         petal.style.fontSize = `${size}px`;
         petal.style.left = `${left}%`;
         petal.style.animation = `fall ${duration}s linear ${delay}s forwards`;
         petal.style.opacity = Math.random() * 0.3 + 0.2;
-        
         elements.petalsContainer.appendChild(petal);
-        
         setTimeout(() => {
             if (petal.parentNode === elements.petalsContainer) {
                 elements.petalsContainer.removeChild(petal);
             }
         }, (duration + delay) * 1000);
     }
-    
+
     startIntro() {
         document.body.style.overflow = 'hidden';
         
         setTimeout(() => {
+            if (state.introAudio && state.introPlaying) {
+                state.introAudio.pause();
+                state.introAudio = null;
+                state.introPlaying = false;
+            }
+            
             elements.romanticIntro.classList.add('hide');
             elements.galleryMain.classList.add('show');
-            
+
             setTimeout(() => {
                 gallery.init();
-                audioManager.init();
+                if (!state.audioLoaded) {
+                    audioManager.init();
+                }
                 heartEffect.start();
             }, 500);
         }, CONFIG.introDuration);
     }
 }
 
-// ===== GRID GALLERY =====
 const gallery = {
     init() {
         this.createGrid();
@@ -158,52 +159,47 @@ const gallery = {
         this.addEventListeners();
         this.collectGridItems();
     },
-    
+
     createGrid() {
         let gridHTML = '';
         const cols = this.getColumnCount();
-        
+
         for (let copy = 0; copy < CONFIG.gridCopies; copy++) {
             gridHTML += '<div class="grid-container">';
-            
             for (let row = 0; row < CONFIG.totalRows; row++) {
                 const patternIndex = row % gridPatterns.length;
                 const pattern = gridPatterns[patternIndex];
-                
                 for (let col = 0; col < cols; col++) {
                     const imageIndex = pattern[col % pattern.length];
                     const imgSrc = CONFIG.images[imageIndex];
-                    
                     gridHTML += `
-                        <div class="grid-item" data-src="${imgSrc}" data-row="${row}" data-col="${col}" data-copy="${copy}">
+                        <div class="grid-item" data-src="${imgSrc}" data-index="${copy * CONFIG.totalRows * cols + row * cols + col}">
                             <img src="images/${imgSrc}" alt="Your Photos" loading="lazy">
                         </div>
                     `;
                 }
             }
-            
             gridHTML += '</div>';
         }
-        
         elements.gridTrack.innerHTML = gridHTML;
     },
-    
+
     collectGridItems() {
         state.gridItems = document.querySelectorAll('.grid-item');
-        
         state.gridItems.forEach((item, index) => {
+            item.setAttribute('data-index', index);
             item.addEventListener('click', () => {
                 modal.open(index);
             });
         });
     },
-    
+
     getColumnCount() {
         if (window.innerWidth <= 480) return 3;
         if (window.innerWidth <= 1024) return 5;
         return 8;
     },
-    
+
     calculateGridWidth() {
         const container = document.querySelector('.grid-container');
         if (container) {
@@ -211,150 +207,158 @@ const gallery = {
             state.gridWidth = containerWidth * CONFIG.gridCopies;
         }
     },
-    
+
     setTranslateX(value) {
         if (elements.gridTrack) {
             elements.gridTrack.style.transform = `translateX(${value}px)`;
         }
     },
-    
+
     startAutoScroll() {
         const scroll = () => {
             if (!state.isDragging && !state.isPaused && elements.gridTrack) {
                 state.currentTranslateX -= CONFIG.scrollSpeed;
-                
                 if (Math.abs(state.currentTranslateX) >= state.gridWidth / 2) {
                     state.currentTranslateX = 0;
                 }
-                
                 this.setTranslateX(state.currentTranslateX);
             }
-            
             state.animationFrame = requestAnimationFrame(scroll);
         };
-        
         scroll();
     },
-    
+
     addEventListeners() {
         elements.galleryWrapper.addEventListener('wheel', (e) => {
             e.preventDefault();
-            
             const delta = e.deltaY * 0.35;
             state.currentTranslateX -= delta;
-            
             const maxScroll = state.gridWidth - window.innerWidth;
             if (Math.abs(state.currentTranslateX) > maxScroll) {
                 state.currentTranslateX = -maxScroll;
             }
-            
             this.setTranslateX(state.currentTranslateX);
-            
             state.isPaused = true;
-            
-            if (state.wheelTimeout) {
-                clearTimeout(state.wheelTimeout);
-            }
-            
+            if (state.wheelTimeout) clearTimeout(state.wheelTimeout);
             state.wheelTimeout = setTimeout(() => {
                 state.isPaused = false;
             }, 1500);
         });
-        
+
         elements.gridTrack.addEventListener('mousedown', (e) => {
             state.isDragging = true;
             state.startX = e.pageX - state.currentTranslateX;
             state.scrollLeft = state.currentTranslateX;
             elements.gridTrack.style.cursor = 'grabbing';
         });
-        
+
         elements.gridTrack.addEventListener('mousemove', (e) => {
             if (!state.isDragging) return;
             e.preventDefault();
-            
             const x = e.pageX;
             const walk = (x - state.startX) * 1;
             state.currentTranslateX = state.scrollLeft + walk;
             this.setTranslateX(state.currentTranslateX);
         });
-        
+
         elements.gridTrack.addEventListener('touchstart', (e) => {
             state.isDragging = true;
             state.startX = e.touches[0].pageX - state.currentTranslateX;
             state.scrollLeft = state.currentTranslateX;
         });
-        
+
         elements.gridTrack.addEventListener('touchmove', (e) => {
             if (!state.isDragging) return;
             e.preventDefault();
-            
             const x = e.touches[0].pageX;
             const walk = (x - state.startX) * 1;
             state.currentTranslateX = state.scrollLeft + walk;
             this.setTranslateX(state.currentTranslateX);
         });
-        
+
         ['mouseup', 'mouseleave', 'touchend'].forEach(event => {
             elements.gridTrack.addEventListener(event, () => {
                 state.isDragging = false;
                 elements.gridTrack.style.cursor = 'grab';
             });
         });
-        
+
         elements.gridTrack.addEventListener('mouseenter', () => state.isPaused = true);
         elements.gridTrack.addEventListener('mouseleave', () => state.isPaused = false);
     }
 };
 
-// ===== MODAL =====
 const modal = {
     open(index) {
         state.currentModalIndex = index;
-        
         const imgSrc = state.gridItems[index].getAttribute('data-src');
-        elements.modalImage.src = `images/${imgSrc}`;
-        elements.modal.classList.add('active');
         
+        // Reset image src to trigger reflow
+        elements.modalImage.src = '';
+        
+        // Set new src
+        setTimeout(() => {
+            elements.modalImage.src = `images/${imgSrc}`;
+        }, 50);
+        
+        elements.modal.classList.add('active');
         this.updateCounter(index, state.gridItems.length);
         document.body.style.overflow = 'hidden';
     },
-    
+
     close() {
         elements.modal.classList.remove('active');
         document.body.style.overflow = 'hidden';
+        // Clear image when modal closes
+        setTimeout(() => {
+            elements.modalImage.src = '';
+        }, 300);
     },
-    
+
     next() {
         state.currentModalIndex = (state.currentModalIndex + 1) % state.gridItems.length;
-        
         const imgSrc = state.gridItems[state.currentModalIndex].getAttribute('data-src');
-        elements.modalImage.src = `images/${imgSrc}`;
+        
+        // Fade effect
+        elements.modalImage.style.opacity = '0';
+        setTimeout(() => {
+            elements.modalImage.src = `images/${imgSrc}`;
+            elements.modalImage.style.opacity = '1';
+        }, 150);
         
         this.updateCounter(state.currentModalIndex, state.gridItems.length);
     },
-    
+
     prev() {
         state.currentModalIndex = (state.currentModalIndex - 1 + state.gridItems.length) % state.gridItems.length;
-        
         const imgSrc = state.gridItems[state.currentModalIndex].getAttribute('data-src');
-        elements.modalImage.src = `images/${imgSrc}`;
+        
+        // Fade effect
+        elements.modalImage.style.opacity = '0';
+        setTimeout(() => {
+            elements.modalImage.src = `images/${imgSrc}`;
+            elements.modalImage.style.opacity = '1';
+        }, 150);
         
         this.updateCounter(state.currentModalIndex, state.gridItems.length);
     },
-    
+
     updateCounter(current, total) {
         elements.modalCounter.textContent = `${current + 1} / ${total}`;
     },
-    
+
     init() {
+        // Set initial opacity
+        elements.modalImage.style.transition = 'opacity 0.15s ease';
+        elements.modalImage.style.opacity = '1';
+
         elements.modalClose.addEventListener('click', () => this.close());
         elements.modalPrev.addEventListener('click', () => this.prev());
         elements.modalNext.addEventListener('click', () => this.next());
         elements.modalOverlay.addEventListener('click', () => this.close());
-        
+
         document.addEventListener('keydown', (e) => {
             if (!elements.modal.classList.contains('active')) return;
-            
             if (e.key === 'Escape') {
                 this.close();
             } else if (e.key === 'ArrowRight') {
@@ -363,38 +367,38 @@ const modal = {
                 this.prev();
             }
         });
-        
+
         elements.modal.addEventListener('wheel', (e) => {
             if (!elements.modal.classList.contains('active')) return;
             e.preventDefault();
-            
             if (e.deltaY > 0) {
                 this.next();
             } else {
                 this.prev();
             }
         });
-        
-        let touchStartX = 0;
-        let touchEndX = 0;
-        
+
+        let touchStartX = 0, touchEndX = 0;
         elements.modal.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
         });
-        
         elements.modal.addEventListener('touchend', (e) => {
             touchEndX = e.changedTouches[0].screenX;
-            
             if (touchEndX < touchStartX - 50) {
                 this.next();
             } else if (touchEndX > touchStartX + 50) {
                 this.prev();
             }
         });
+
+        // Handle image load error
+        elements.modalImage.addEventListener('error', () => {
+            console.log('Image failed to load');
+            elements.modalImage.src = 'images/placeholder.jpg';
+        });
     }
 };
 
-// ===== AUDIO MANAGER =====
 const audioManager = {
     init() {
         try {
@@ -402,8 +406,18 @@ const audioManager = {
             state.audio.loop = true;
             state.audio.volume = 0;
             
+            state.audio.addEventListener('canplaythrough', () => {
+                state.audioLoaded = true;
+            });
+            
+            state.audio.addEventListener('error', (e) => {
+                console.log('Audio error:', e);
+            });
+            
             setTimeout(() => {
-                this.play();
+                if (state.audio && !state.isPlaying) {
+                    this.play();
+                }
             }, CONFIG.introDuration - 1000);
             
             this.addEventListeners();
@@ -411,24 +425,30 @@ const audioManager = {
             console.log('Audio init error:', error);
         }
     },
-    
+
     play() {
-        if (!state.audio) return;
-        
-        state.audio.play()
-            .then(() => {
-                state.isPlaying = true;
-                this.fadeIn();
-                this.updateUI();
-            })
-            .catch(() => {
-                console.log('Autoplay blocked');
-            });
+        if (!state.audio || !state.audioLoaded) {
+            setTimeout(() => this.play(), 500);
+            return;
+        }
+
+        const playPromise = state.audio.play();
+        if (playPromise !== undefined) {
+            playPromise
+                .then(() => {
+                    state.isPlaying = true;
+                    this.fadeIn();
+                    this.updateUI();
+                })
+                .catch(err => {
+                    console.log('Playback failed:', err);
+                    setTimeout(() => this.play(), 1000);
+                });
+        }
     },
-    
+
     fadeIn() {
         if (!state.audio) return;
-        
         let volume = 0;
         const interval = setInterval(() => {
             volume += 0.03;
@@ -439,10 +459,9 @@ const audioManager = {
             if (state.audio) state.audio.volume = volume;
         }, 100);
     },
-    
+
     fadeOut() {
         if (!state.audio) return;
-        
         let volume = 0.3;
         const interval = setInterval(() => {
             volume -= 0.03;
@@ -454,10 +473,9 @@ const audioManager = {
             if (state.audio) state.audio.volume = volume;
         }, 100);
     },
-    
+
     toggle() {
         if (!state.audio) return;
-        
         if (state.isPlaying) {
             this.fadeOut();
             state.isPlaying = false;
@@ -469,40 +487,73 @@ const audioManager = {
                 })
                 .catch(console.log);
         }
-        
         this.updateUI();
     },
-    
+
     updateUI() {
+        if (elements.musicIcon) {
+            elements.musicIcon.className = state.isPlaying ? 'fas fa-pause' : 'fas fa-play';
+        }
         if (state.isPlaying) {
             elements.musicWave.classList.add('active');
         } else {
             elements.musicWave.classList.remove('active');
         }
     },
-    
+
     addEventListeners() {
         elements.musicBtn.addEventListener('click', () => this.toggle());
         
         document.addEventListener('click', () => {
-            if (!state.isPlaying && state.audio && state.audio.paused) {
+            if (!state.isPlaying && state.audio && state.audio.paused && state.audioLoaded) {
                 this.play();
             }
         }, { once: true });
     }
 };
 
-// ===== HEART EFFECT =====
+const introAudioManager = {
+    init() {
+        try {
+            state.introAudio = new Audio(CONFIG.introAudioPath);
+            state.introAudio.volume = 0.2;
+            state.introAudio.loop = false;
+            
+            state.introAudio.addEventListener('canplaythrough', () => {
+                state.introAudioLoaded = true;
+                this.play();
+            });
+            
+            state.introAudio.addEventListener('error', (e) => {
+                console.log('Intro audio error:', e);
+            });
+        } catch (error) {
+            console.log('Intro audio init error:', error);
+        }
+    },
+
+    play() {
+        if (!state.introAudio || !state.introAudioLoaded) return;
+        
+        state.introAudio.play()
+            .then(() => {
+                state.introPlaying = true;
+            })
+            .catch(err => {
+                console.log('Intro playback failed:', err);
+            });
+    }
+};
+
 const heartEffect = {
     start() {
         state.heartInterval = setInterval(() => {
             this.createHeart();
         }, CONFIG.heartInterval);
     },
-    
+
     createHeart() {
         if (!elements.floatingHearts) return;
-        
         const heart = document.createElement('div');
         heart.className = 'heart-item';
         heart.innerHTML = '❤️';
@@ -510,30 +561,24 @@ const heartEffect = {
         heart.style.top = (Math.random() * 80 + 10) + '%';
         heart.style.fontSize = (Math.random() * 12 + 8) + 'px';
         heart.style.animationDuration = (Math.random() * 2 + 4) + 's';
-        
         elements.floatingHearts.appendChild(heart);
-        
         setTimeout(() => {
             if (heart.parentNode === elements.floatingHearts) {
                 elements.floatingHearts.removeChild(heart);
             }
         }, 6000);
     },
-    
+
     stop() {
-        if (state.heartInterval) {
-            clearInterval(state.heartInterval);
-        }
+        if (state.heartInterval) clearInterval(state.heartInterval);
     }
 };
 
-// ===== RESIZE HANDLER =====
 window.addEventListener('resize', () => {
     const height = window.innerWidth <= 768 ? 40 : 80;
     document.querySelectorAll('.cinematic-bar').forEach(bar => {
         bar.style.height = `${height}px`;
     });
-    
     if (elements.galleryMain.classList.contains('show')) {
         setTimeout(() => {
             gallery.calculateGridWidth();
@@ -541,25 +586,22 @@ window.addEventListener('resize', () => {
     }
 });
 
-// ===== CLEANUP =====
 window.addEventListener('beforeunload', () => {
-    if (state.animationFrame) {
-        cancelAnimationFrame(state.animationFrame);
-    }
-    if (state.heartInterval) {
-        clearInterval(state.heartInterval);
-    }
-    if (state.wheelTimeout) {
-        clearTimeout(state.wheelTimeout);
-    }
+    if (state.animationFrame) cancelAnimationFrame(state.animationFrame);
+    if (state.heartInterval) clearInterval(state.heartInterval);
+    if (state.wheelTimeout) clearTimeout(state.wheelTimeout);
     if (state.audio) {
         state.audio.pause();
         state.audio = null;
     }
+    if (state.introAudio) {
+        state.introAudio.pause();
+        state.introAudio = null;
+    }
 });
 
-// ===== INITIALIZE =====
 document.addEventListener('DOMContentLoaded', () => {
+    introAudioManager.init();
     const intro = new RomanticIntro();
     intro.init();
     modal.init();
