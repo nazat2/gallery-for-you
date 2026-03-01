@@ -47,7 +47,8 @@ let state = {
     currentModalIndex: 0,
     wheelTimeout: null,
     audioLoaded: false,
-    introAudioLoaded: false
+    introAudioLoaded: false,
+    userInteracted: false
 };
 
 const gridPatterns = [
@@ -293,10 +294,8 @@ const modal = {
         state.currentModalIndex = index;
         const imgSrc = state.gridItems[index].getAttribute('data-src');
         
-        // Reset image src to trigger reflow
         elements.modalImage.src = '';
         
-        // Set new src
         setTimeout(() => {
             elements.modalImage.src = `images/${imgSrc}`;
         }, 50);
@@ -309,7 +308,6 @@ const modal = {
     close() {
         elements.modal.classList.remove('active');
         document.body.style.overflow = 'hidden';
-        // Clear image when modal closes
         setTimeout(() => {
             elements.modalImage.src = '';
         }, 300);
@@ -319,7 +317,6 @@ const modal = {
         state.currentModalIndex = (state.currentModalIndex + 1) % state.gridItems.length;
         const imgSrc = state.gridItems[state.currentModalIndex].getAttribute('data-src');
         
-        // Fade effect
         elements.modalImage.style.opacity = '0';
         setTimeout(() => {
             elements.modalImage.src = `images/${imgSrc}`;
@@ -333,7 +330,6 @@ const modal = {
         state.currentModalIndex = (state.currentModalIndex - 1 + state.gridItems.length) % state.gridItems.length;
         const imgSrc = state.gridItems[state.currentModalIndex].getAttribute('data-src');
         
-        // Fade effect
         elements.modalImage.style.opacity = '0';
         setTimeout(() => {
             elements.modalImage.src = `images/${imgSrc}`;
@@ -348,7 +344,6 @@ const modal = {
     },
 
     init() {
-        // Set initial opacity
         elements.modalImage.style.transition = 'opacity 0.15s ease';
         elements.modalImage.style.opacity = '1';
 
@@ -391,34 +386,60 @@ const modal = {
             }
         });
 
-        // Handle image load error
         elements.modalImage.addEventListener('error', () => {
             console.log('Image failed to load');
-            elements.modalImage.src = 'images/placeholder.jpg';
         });
     }
 };
 
+// ===== FIXED AUDIO MANAGER FOR HOSTING =====
 const audioManager = {
     init() {
         try {
+            // Pake path absolut relatif biar aman di hosting
+            const basePath = window.location.pathname.includes('/') ? '' : '';
             state.audio = new Audio(CONFIG.audioPath);
             state.audio.loop = true;
             state.audio.volume = 0;
             
+            // Force preload
+            state.audio.preload = 'auto';
+            
             state.audio.addEventListener('canplaythrough', () => {
                 state.audioLoaded = true;
+                console.log('Audio loaded, ready to play');
+                // Coba play otomatis kalo user udah interaksi
+                if (state.userInteracted && !state.isPlaying) {
+                    this.play();
+                }
+            });
+            
+            state.audio.addEventListener('play', () => {
+                state.isPlaying = true;
+                this.updateUI();
+                console.log('Audio playing');
+            });
+            
+            state.audio.addEventListener('pause', () => {
+                state.isPlaying = false;
+                this.updateUI();
+                console.log('Audio paused');
+            });
+            
+            state.audio.addEventListener('ended', () => {
+                // Loop manually kalo perlu
+                if (state.audio.loop) {
+                    state.audio.currentTime = 0;
+                    state.audio.play().catch(console.log);
+                }
             });
             
             state.audio.addEventListener('error', (e) => {
                 console.log('Audio error:', e);
             });
             
-            setTimeout(() => {
-                if (state.audio && !state.isPlaying) {
-                    this.play();
-                }
-            }, CONFIG.introDuration - 1000);
+            // Coba load
+            state.audio.load();
             
             this.addEventListeners();
         } catch (error) {
@@ -427,11 +448,14 @@ const audioManager = {
     },
 
     play() {
-        if (!state.audio || !state.audioLoaded) {
-            setTimeout(() => this.play(), 500);
+        if (!state.audio) {
+            console.log('Audio not initialized');
             return;
         }
 
+        // Force UI update dulu biar keliatan ada response
+        this.updateUI();
+        
         const playPromise = state.audio.play();
         if (playPromise !== undefined) {
             playPromise
@@ -439,10 +463,19 @@ const audioManager = {
                     state.isPlaying = true;
                     this.fadeIn();
                     this.updateUI();
+                    console.log('Playback started successfully');
                 })
                 .catch(err => {
                     console.log('Playback failed:', err);
-                    setTimeout(() => this.play(), 1000);
+                    state.isPlaying = false;
+                    this.updateUI();
+                    
+                    // Fallback: coba lagi setelah user klik
+                    if (err.name === 'NotAllowedError') {
+                        console.log('Autoplay blocked, waiting for user interaction');
+                        // Tetap update UI ke pause state
+                        this.updateUI();
+                    }
                 });
         }
     },
@@ -475,40 +508,99 @@ const audioManager = {
     },
 
     toggle() {
-        if (!state.audio) return;
+        if (!state.audio) {
+            console.log('Audio not ready');
+            return;
+        }
+        
+        // Tandai user udah interaksi
+        state.userInteracted = true;
+        
         if (state.isPlaying) {
+            console.log('Pausing audio');
             this.fadeOut();
-            state.isPlaying = false;
+            // isPlaying akan di-update via event listener pause
         } else {
+            console.log('Starting audio');
             state.audio.play()
                 .then(() => {
                     this.fadeIn();
-                    state.isPlaying = true;
+                    // isPlaying akan di-update via event listener play
                 })
-                .catch(console.log);
+                .catch(err => {
+                    console.log('Toggle play failed:', err);
+                    state.isPlaying = false;
+                    this.updateUI();
+                });
         }
+        
+        // Tetap update UI biar responsive
         this.updateUI();
     },
 
     updateUI() {
+        // Update icon berdasarkan state.isPlaying
         if (elements.musicIcon) {
-            elements.musicIcon.className = state.isPlaying ? 'fas fa-pause' : 'fas fa-play';
+            if (state.isPlaying) {
+                elements.musicIcon.className = 'fas fa-pause';
+                console.log('UI: set to pause icon');
+            } else {
+                elements.musicIcon.className = 'fas fa-play';
+                console.log('UI: set to play icon');
+            }
         }
+        
+        // Update wave animation berdasarkan state.isPlaying
         if (state.isPlaying) {
             elements.musicWave.classList.add('active');
+            console.log('UI: wave active');
         } else {
             elements.musicWave.classList.remove('active');
+            console.log('UI: wave inactive');
+        }
+        
+        // Force reflow biar animasi Jalan di hosting
+        if (elements.musicWave) {
+            // Trigger reflow dengan manipulasi DOM kecil
+            elements.musicWave.style.display = 'none';
+            elements.musicWave.offsetHeight; // Force reflow
+            elements.musicWave.style.display = 'flex';
         }
     },
 
     addEventListeners() {
-        elements.musicBtn.addEventListener('click', () => this.toggle());
+        // Click listener untuk toggle
+        elements.musicBtn.addEventListener('click', () => {
+            console.log('Music button clicked');
+            this.toggle();
+        });
         
-        document.addEventListener('click', () => {
-            if (!state.isPlaying && state.audio && state.audio.paused && state.audioLoaded) {
+        // Listener untuk user interaction pertama
+        const enableAudio = () => {
+            if (!state.userInteracted && state.audio && !state.isPlaying) {
+                state.userInteracted = true;
+                console.log('User interacted, enabling audio');
+                if (state.audioLoaded) {
+                    this.play();
+                }
+            }
+        };
+        
+        // Berbagai event buat deteksi user interaction
+        document.addEventListener('click', enableAudio, { once: false });
+        document.addEventListener('touchstart', enableAudio, { once: false });
+        document.addEventListener('keydown', enableAudio, { once: false });
+        
+        // Scroll juga bisa jadi indikasi user interaction
+        window.addEventListener('scroll', enableAudio, { once: false });
+        
+        // Untuk hosting, coba play pas visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && state.userInteracted && state.audio && !state.isPlaying && state.audioLoaded) {
+                console.log('Tab visible, trying to play');
                 this.play();
             }
-        }, { once: true });
+        });
     }
 };
 
@@ -600,9 +692,32 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
+// Force update UI setiap beberapa detik buat jaga-jaga di hosting
+setInterval(() => {
+    if (state.audio && elements.musicWave) {
+        // Cek apakah state sesuai dengan kondisi audio sebenarnya
+        if (!state.audio.paused && !state.isPlaying) {
+            state.isPlaying = true;
+            audioManager.updateUI();
+        } else if (state.audio.paused && state.isPlaying) {
+            state.isPlaying = false;
+            audioManager.updateUI();
+        }
+    }
+}, 1000);
+
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing...');
     introAudioManager.init();
     const intro = new RomanticIntro();
     intro.init();
     modal.init();
+    
+    // Set initial UI state
+    setTimeout(() => {
+        if (elements.musicIcon) {
+            elements.musicIcon.className = 'fas fa-play';
+        }
+        elements.musicWave.classList.remove('active');
+    }, 100);
 });
